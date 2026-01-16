@@ -183,7 +183,7 @@ class OverlayMaker:
 
     #------MY CODE STARTS HERE-----------
 
-    #View-------------------------
+    #View :)-------------------------
     
     def clearInputs(self):
         #Find all comboboxes
