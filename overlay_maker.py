@@ -213,6 +213,27 @@ class OverlayMaker:
         self.dlg.dem.addItems(dems)
         self.dlg.blocks.addItems(vectors)
 
+    def SOMode(self):
+        layers = QgsProject.instance().mapLayers()
+        dems = []
+        vectors = []
+
+         #collecting all dems currently loaded
+        for id, l in layers.items():
+            if l.type() == QgsMapLayer.RasterLayer:
+                dems.append(l.name())
+            elif l.type() == QgsMapLayer.VectorLayer:
+                vectors.append(l.name())
+
+        self.dlg.modePage.setCurrentIndex(1)
+
+        # Populate the dem box with names of all the loaded dem layers
+        self.dlg.demSO.addItems(dems)
+        self.dlg.blocksSO.addItems(vectors)
+
+    
+        
+
     #------MY CODE ENDS HERE-----------
 
 
@@ -229,19 +250,14 @@ class OverlayMaker:
                     
         
         #------MY CODE STARTS HERE-----------
-        # Fetch the current project info
-        layers = QgsProject.instance().mapLayers()
-        dems = []
-        vectors = []
 
-        #collecting all vectors currently loaded
-        for id, l in layers.items():
-            if l.type() == QgsMapLayer.VectorLayer:
-                vectors.append(l.name())
-
+        #reset progress bar
+        self.dlg.progressBar.setValue(0)
 
         #Controller----------------------------
         self.dlg.AOButton.clicked.connect(self.AOMode)
+        self.dlg.SOButton.clicked.connect(self.SOMode)
+
             
         #------MY CODE ENDS HERE-----------
 

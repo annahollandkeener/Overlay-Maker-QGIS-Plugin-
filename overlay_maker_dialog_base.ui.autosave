@@ -28,11 +28,11 @@
       <x>0</x>
       <y>80</y>
       <width>401</width>
-      <height>181</height>
+      <height>221</height>
      </rect>
     </property>
     <property name="currentIndex">
-     <number>2</number>
+     <number>1</number>
     </property>
     <widget class="QWidget" name="AOPage">
      <widget class="QWidget" name="gridLayoutWidget">
@@ -45,30 +45,30 @@
        </rect>
       </property>
       <layout class="QGridLayout" name="gridLayout">
-       <item row="5" column="0">
+       <item row="4" column="0">
         <widget class="QComboBox" name="blocks"/>
        </item>
-       <item row="7" column="0">
-        <widget class="QComboBox" name="dem"/>
-       </item>
        <item row="8" column="0">
+        <widget class="QComboBox" name="output"/>
+       </item>
+       <item row="7" column="0">
         <widget class="QLabel" name="label_3">
          <property name="text">
           <string>Select an Output Folder: </string>
          </property>
         </widget>
        </item>
-       <item row="4" column="0">
+       <item row="3" column="0">
         <widget class="QLabel" name="label">
          <property name="text">
           <string>Select a 'Blocks' File:</string>
          </property>
         </widget>
        </item>
-       <item row="9" column="0">
-        <widget class="QComboBox" name="output"/>
-       </item>
        <item row="6" column="0">
+        <widget class="QComboBox" name="dem"/>
+       </item>
+       <item row="5" column="0">
         <widget class="QLabel" name="label_2">
          <property name="text">
           <string>Select a 'DEM' File: </string>
@@ -77,7 +77,24 @@
        </item>
       </layout>
      </widget>
+     <widget class="QLabel" name="label_8">
+      <property name="geometry">
+       <rect>
+        <x>-2</x>
+        <y>160</y>
+        <width>401</width>
+        <height>61</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string/>
+      </property>
+      <property name="pixmap">
+       <pixmap>../../../../../../../../../OneDrive/Pictures/Screenshots/Screenshot 2026-01-16 223955.png</pixmap>
+      </property>
+     </widget>
     </widget>
+    <widget class="QWidget" name="RRPage"/>
     <widget class="QWidget" name="SOPage">
      <widget class="QWidget" name="gridLayoutWidget_3">
       <property name="geometry">
@@ -121,40 +138,39 @@
        </item>
       </layout>
      </widget>
+     <widget class="QLabel" name="label_9">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>160</y>
+        <width>401</width>
+        <height>61</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string/>
+      </property>
+      <property name="pixmap">
+       <pixmap>../../../../../../../../../OneDrive/Pictures/Screenshots/Screenshot 2026-01-16 224448.png</pixmap>
+      </property>
+     </widget>
     </widget>
-    <widget class="QWidget" name="page_3">
+    <widget class="QWidget" name="GHPage">
      <widget class="QWidget" name="gridLayoutWidget_4">
       <property name="geometry">
        <rect>
         <x>20</x>
         <y>0</y>
-        <width>361</width>
+        <width>371</width>
         <height>151</height>
        </rect>
       </property>
       <layout class="QGridLayout" name="gridLayout_6">
-       <item row="1" column="0">
-        <widget class="QComboBox" name="blocksSO_5"/>
-       </item>
        <item row="3" column="0">
         <widget class="QComboBox" name="demSO_5"/>
        </item>
        <item row="6" column="0">
         <widget class="QComboBox" name="output_6"/>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_16">
-         <property name="text">
-          <string>Select an 'Overlay'' File: </string>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="0">
-        <widget class="QLabel" name="label_17">
-         <property name="text">
-          <string>Select an Output Folder: </string>
-         </property>
-        </widget>
        </item>
        <item row="0" column="0">
         <widget class="QLabel" name="label_18">
@@ -163,7 +179,40 @@
          </property>
         </widget>
        </item>
+       <item row="1" column="0">
+        <widget class="QComboBox" name="blocksSO_5"/>
+       </item>
+       <item row="4" column="0">
+        <widget class="QLabel" name="label_17">
+         <property name="text">
+          <string>Select an Output Folder: </string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="label_16">
+         <property name="text">
+          <string>Select an 'Overlay'' File: </string>
+         </property>
+        </widget>
+       </item>
       </layout>
+     </widget>
+     <widget class="QLabel" name="label_10">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>160</y>
+        <width>401</width>
+        <height>61</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string/>
+      </property>
+      <property name="pixmap">
+       <pixmap>../../../../../../../../../OneDrive/Pictures/Screenshots/Screenshot 2025-08-01 095619.png</pixmap>
+      </property>
      </widget>
     </widget>
    </widget>
@@ -255,6 +304,48 @@
      </property>
     </widget>
    </widget>
+  </widget>
+  <widget class="QWidget" name="gridLayoutWidget_5">
+   <property name="geometry">
+    <rect>
+     <x>40</x>
+     <y>40</y>
+     <width>361</width>
+     <height>151</height>
+    </rect>
+   </property>
+   <layout class="QGridLayout" name="gridLayout_7">
+    <item row="2" column="0">
+     <widget class="QLabel" name="label_19">
+      <property name="text">
+       <string>Select a 'DEM' File: </string>
+      </property>
+     </widget>
+    </item>
+    <item row="6" column="0">
+     <widget class="QComboBox" name="output_5"/>
+    </item>
+    <item row="1" column="0">
+     <widget class="QComboBox" name="blocksSO_4"/>
+    </item>
+    <item row="3" column="0">
+     <widget class="QComboBox" name="demSO_4"/>
+    </item>
+    <item row="0" column="0">
+     <widget class="QLabel" name="label_20">
+      <property name="text">
+       <string>Select a 'Blocks' File:</string>
+      </property>
+     </widget>
+    </item>
+    <item row="4" column="0">
+     <widget class="QLabel" name="label_21">
+      <property name="text">
+       <string>Select an Output Folder: </string>
+      </property>
+     </widget>
+    </item>
+   </layout>
   </widget>
  </widget>
  <resources/>
