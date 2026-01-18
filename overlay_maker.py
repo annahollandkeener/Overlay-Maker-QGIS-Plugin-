@@ -184,6 +184,9 @@ class OverlayMaker:
     #------MY CODE STARTS HERE-----------
 
     #View :)-------------------------
+
+    def showMainPage(self):
+        self.dlg.currentDisplay.setCurrentIndex(0)
     
     def clearInputs(self):
         #Find all comboboxes
@@ -196,9 +199,11 @@ class OverlayMaker:
         print("CONSTRUCTION")
 
     def AOMode(self):
+        self.dlg.currentDisplay.setCurrentIndex(0)
+        
         layers = QgsProject.instance().mapLayers()
-        dems = []
-        vectors = []
+        dems = ['']
+        vectors = ['']
 
          #collecting all dems currently loaded
         for id, l in layers.items():
@@ -206,17 +211,17 @@ class OverlayMaker:
                 dems.append(l.name())
             elif l.type() == QgsMapLayer.VectorLayer:
                 vectors.append(l.name())
-
-        self.dlg.modePage.setCurrentIndex(0)
 
         # Populate the dem box with names of all the loaded dem layers
         self.dlg.dem.addItems(dems)
         self.dlg.blocks.addItems(vectors)
 
     def SOMode(self):
+        self.dlg.currentDisplay.setCurrentIndex(0)
+
         layers = QgsProject.instance().mapLayers()
-        dems = []
-        vectors = []
+        dems = ['']
+        vectors = ['']
 
          #collecting all dems currently loaded
         for id, l in layers.items():
@@ -224,8 +229,6 @@ class OverlayMaker:
                 dems.append(l.name())
             elif l.type() == QgsMapLayer.VectorLayer:
                 vectors.append(l.name())
-
-        self.dlg.modePage.setCurrentIndex(1)
 
         # Populate the dem box with names of all the loaded dem layers
         self.dlg.demSO.addItems(dems)
@@ -253,10 +256,16 @@ class OverlayMaker:
 
         #reset progress bar
         self.dlg.progressBar.setValue(0)
+        #set page to start page
+        self.dlg.currentDisplay.setCurrentIndex(1)
 
         #Controller----------------------------
         self.dlg.AOButton.clicked.connect(self.AOMode)
+        self.dlg.AOButtonStart.clicked.connect(self.AOMode)
+
         self.dlg.SOButton.clicked.connect(self.SOMode)
+        self.dlg.SOButtonStart.clicked.connect(self.SOMode)
+        
 
             
         #------MY CODE ENDS HERE-----------
