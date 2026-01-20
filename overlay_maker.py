@@ -25,7 +25,8 @@ from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
 from qgis.core import QgsProject, QgsMapLayer
-from PyQt5.QtWidgets import QComboBox
+from PyQt5.QtWidgets import QComboBox, QPushButton
+from PyQt5 import QtWidgets, QtCore
 
 # Initialize Qt resources from file resources.py
 from .resources import *
@@ -33,6 +34,8 @@ from .resources import *
 from .overlay_maker_dialog import OverlayMakerDialog
 import os.path
 
+#import all of the functions I've written
+from . import model
 
 class OverlayMaker:
     """QGIS Plugin Implementation."""
@@ -45,6 +48,8 @@ class OverlayMaker:
             application at run time.
         :type iface: QgsInterface
         """
+
+
         # Save reference to the QGIS interface
         self.iface = iface
         # initialize plugin directory
@@ -60,6 +65,9 @@ class OverlayMaker:
             self.translator = QTranslator()
             self.translator.load(locale_path)
             QCoreApplication.installTranslator(self.translator)
+
+        #current Mode (MY CODE)
+        self.mode = ''
 
         # Declare instance attributes
         self.actions = []
@@ -195,52 +203,81 @@ class OverlayMaker:
         for combo in all_combos:
             combo.clear()
 
-    def pickFile():
-        print("CONSTRUCTION")
+    def pickFile(self, textBox, type):
+        """Opens a file dialog for the user to select a file."""
+        qfd = QtWidgets.QFileDialog()
 
-    def AOMode(self):
-        self.dlg.currentDisplay.setCurrentIndex(0)
+        title = "Select a file"
+
         
-        layers = QgsProject.instance().mapLayers()
-        dems = ['']
-        vectors = ['']
 
-         #collecting all dems currently loaded
-        for id, l in layers.items():
-            if l.type() == QgsMapLayer.RasterLayer:
-                dems.append(l.name())
-            elif l.type() == QgsMapLayer.VectorLayer:
-                vectors.append(l.name())
-
-        # Populate the dem box with names of all the loaded dem layers
-        self.dlg.dem.addItems(dems)
-        self.dlg.blocks.addItems(vectors)
-
-    def SOMode(self):
-        self.dlg.currentDisplay.setCurrentIndex(0)
-
-        layers = QgsProject.instance().mapLayers()
-        dems = ['']
-        vectors = ['']
-
-         #collecting all dems currently loaded
-        for id, l in layers.items():
-            if l.type() == QgsMapLayer.RasterLayer:
-                dems.append(l.name())
-            elif l.type() == QgsMapLayer.VectorLayer:
-                vectors.append(l.name())
-
-        # Populate the dem box with names of all the loaded dem layers
-        self.dlg.demSO.addItems(dems)
-        self.dlg.blocksSO.addItems(vectors)
-
+        if type == "folder":
+            filePath = QtWidgets.QFileDialog.getExistingDirectory(qfd, "Select Folder", "C:\\")
+            textBox.setText(filePath)
     
+        elif type == "SHP":
+             # Define file filters (e.g., Shapefiles)
+            f = "Shapefiles (*.shp)"
+            filePath, _filt = QtWidgets.QFileDialog.getOpenFileName(qfd, title, ".", f)
+            textBox.setEditable(True)
+            textBox.setCurrentText(filePath)
+        
+        elif type == "DEM":
+            f = "TIF Files (*.tif *.tiff)"
+            filePath, _filt = QtWidgets.QFileDialog.getOpenFileName(qfd, title, ".", f)
+            textBox.setEditable(True)
+            textBox.setCurrentText(filePath)
+
         
 
-    #------MY CODE ENDS HERE-----------
 
+    def activateMode(self, button, mode = str):
+        self.dlg.currentDisplay.setCurrentIndex(0)
+        self.dlg.AOButton.setCheckable(True)
 
-    #---------------------------------
+        layers = QgsProject.instance().mapLayers()
+        dems = ['']
+        vectors = ['']
+
+         #collecting all dems currently loaded
+        for id, l in layers.items():
+            if l.type() == QgsMapLayer.RasterLayer:
+                dems.append(l.name())
+            elif l.type() == QgsMapLayer.VectorLayer:
+                vectors.append(l.name())
+
+        if mode == "AO":
+            self.mode = "AO"
+            self.dlg.modePage.setCurrentIndex(0)
+            self.dlg.AOdem.addItems(dems)
+            self.dlg.AOBlocks.addItems(vectors)
+        elif mode == "RS":
+            self.mode = "RS"
+            self.dlg.modePage.setCurrentIndex(2)
+            self.dlg.RSdem.addItems(dems)
+            self.dlg.RSWT.addItems(dems)
+        elif mode == "GH":
+            self.mode = "GH"
+            self.dlg.modePage.setCurrentIndex(1)
+            self.dlg.GHdem.addItems(dems)
+            self.dlg.GHBlocks.addItems(vectors)
+        elif mode == "RR":
+            self.mode = "RR"
+            self.dlg.modePage.setCurrentIndex(3)
+            self.dlg.RROverlay.addItems(dems)
+            self.dlg.RRRoads.addItems(vectors)
+
+    def onSubmit(self, mode):
+        print("CONSTRUCT")
+        if self.mode == "AO":
+            model.autoOverlay(self.dlg.AOBlocks.currentText(), self.dlg.AOdem.currentText(), self.dlg.AOOutput.text())
+        elif self.mode == "RS":
+            model.rasterSubtractor(self.dlg.RSdem.currentText(), self.dlg.RSWT.currentText(), self.dlg.RSOutput.text())
+        elif self.mode == "RR":
+            model.roadRaisingLength(self.dlg.RRRoads.currentText(), self.dlg.RROverlay.currentText(), self.dlg.RROutput.text())
+        elif self.mode == "GH":
+            model.rasterHist(self.dlg.GHOverlay.currentText(), self.dlg.GHBlocks.currentText(), None, self.dlg.GHOutput.text(), None, "Histogram")
+
     
     def run(self):
         """Run method that performs all the real work"""
@@ -259,15 +296,30 @@ class OverlayMaker:
         #set page to start page
         self.dlg.currentDisplay.setCurrentIndex(1)
 
-        #Controller----------------------------
-        self.dlg.AOButton.clicked.connect(self.AOMode)
-        self.dlg.AOButtonStart.clicked.connect(self.AOMode)
+        #----------------------------------------Controller------------------------------------------
 
-        self.dlg.SOButton.clicked.connect(self.SOMode)
-        self.dlg.SOButtonStart.clicked.connect(self.SOMode)
-        
+        self.dlg.AOButton.clicked.connect(lambda: self.activateMode(self.dlg.AOButton, "AO"))
+        self.dlg.AOSelectBlocks.clicked.connect(lambda: self.pickFile(self.dlg.AOBlocks, "SHP"))
+        self.dlg.AOSelectDEM.clicked.connect(lambda: self.pickFile(self.dlg.AOdem, "DEM"))
+        self.dlg.AOSelectOP.clicked.connect(lambda: self.pickFile(self.dlg.AOOutput, "folder"))
 
-            
+        self.dlg.RSButton.clicked.connect(lambda: self.activateMode("RS"))
+        self.dlg.RSSelectWT.clicked.connect(lambda: self.pickFile(self.dlg.RSWT, "DEM"))
+        self.dlg.RSSelectDEM.clicked.connect(lambda: self.pickFile(self.dlg.RSDEM, "DEM"))
+        self.dlg.RSSelectOutput.clicked.connect(lambda: self.pickFile(self.dlg.RSOutput, "folder"))
+
+        self.dlg.RRButton.clicked.connect(lambda: self.activateMode("RR"))
+        self.dlg.RRSelectOverlay.clicked.connect(lambda: self.pickFile(self.dlg.RROverlay, "DEM"))
+        self.dlg.RRSelectRoads.clicked.connect(lambda: self.pickFile(self.dlg.RRRoads, "SHP"))
+        self.dlg.RRSelectOutput.clicked.connect(lambda: self.pickFile(self.dlg.RROutput, "folder"))
+
+        self.dlg.GHButton.clicked.connect(lambda: self.activateMode("GH"))
+        self.dlg.GHSelectOverlay.clicked.connect(lambda: self.pickFile(self.dlg.GHdem, "DEM"))
+        self.dlg.GHSelectBlocks.clicked.connect(lambda: self.pickFile(self.dlg.GHBlocks, "SHP"))
+        self.dlg.GHSelectOutput.clicked.connect(lambda: self.pickFile(self.dlg.GHOutput, "folder"))
+
+        self.dlg.pushButton.clicked.connect(lambda: self.onSubmit(self.mode))
+
         #------MY CODE ENDS HERE-----------
 
         # show the dialog
