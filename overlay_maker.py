@@ -266,22 +266,22 @@ class OverlayMaker:
 
         if mode == "AO":
             self.mode = "AO"
-            self.dlg.modePage.setCurrentIndex(0)
+            self.dlg.modePage.setCurrentIndex(self.dlg.modePage.indexOf(self.dlg.AOPage))
             self.dlg.AOdem.addItems(dems)
             self.dlg.AOBlocks.addItems(vectors)
         elif mode == "RS":
             self.mode = "RS"
-            self.dlg.modePage.setCurrentIndex(2)
+            self.dlg.modePage.setCurrentIndex(self.dlg.modePage.indexOf(self.dlg.RSPage))
             self.dlg.RSDEM.addItems(dems)
             self.dlg.RSWT.addItems(dems)
         elif mode == "GH":
             self.mode = "GH"
-            self.dlg.modePage.setCurrentIndex(1)
+            self.dlg.modePage.setCurrentIndex(self.dlg.modePage.indexOf(self.dlg.GHPage))
             self.dlg.GHOverlay.addItems(dems)
             self.dlg.GHBlocks.addItems(vectors)
         elif mode == "RR":
             self.mode = "RR"
-            self.dlg.modePage.setCurrentIndex(3)
+            self.dlg.modePage.setCurrentIndex(self.dlg.modePage.indexOf(self.dlg.RRPage))
             self.dlg.RROverlay.addItems(dems)
             self.dlg.RRRoads.addItems(vectors)
     
@@ -319,6 +319,7 @@ class OverlayMaker:
                 model.rasterHist(self.dlg.GHOverlay.currentText(), self.dlg.GHBlocks.currentText(), None, self.dlg.GHOutput.text(), None, "Histogram")
 
             self.deactivatedColor(self.dlg.pushButton)
+            self.dlg.pushButton.setText("Run")
         
     def run(self):
         """Run method that performs all the real work"""
