@@ -243,26 +243,66 @@ def domedWT( domedBlocks = [], outputFolder = str, columnIndicator = 2, opt = in
 def roadRaisingLength(roads, overlay, outputFolder):
     print("UNDER CONSTRUCTIONS")
 
-    #takes in project dem
+    #takes in project overlay
+    overlayRL = QgsRasterLayer(overlay, "Overlay", "gdal")
+ 
 
     #Takes in line vector of middle of roads in project area
+    roadsVL = QgsVectorLayer(roads, "Roads", "ogr")
     #buffers it by +15
+    bufferedRoads = processing.run("native:buffer", {
+    'INPUT': roadsVL.source(),
+    'DISTANCE': 15,
+    'SEGMENTS': 5,
+    'END_CAP_STYLE': 0,  # Round end cap style
+    'JOIN_STYLE': 1,     # Round join style
+    'MITER_LIMIT': 2,
+    'DISSOLVE': False,   # Set to True to dissolve all buffers
+    'OUTPUT': 'memory:'  # Create a temporary layer
+})
 
-    #Takes in overlay of project area (make sure that the blocks associated with the road
-    #are actually overlapping the road)
 
     #clips overlay to road buffer
+    processing.run("gdal:cliprasterbymasklayer", {'INPUT':'C:/Users/annah/AppData/Local/Temp/processing_NIkQOH/c605d728d6a14722af7be5a3a4c766af/OUTPUT.tif','MASK':'memory://MultiPolygon?crs=EPSG:2264&field=id:long(10,0)&uid={6392fbd8-fbf0-48ad-a483-91cb23f71ff4}','SOURCE_CRS':None,'TARGET_CRS':None,'TARGET_EXTENT':None,'NODATA':None,'ALPHA_BAND':False,'CROP_TO_CUTLINE':True,'KEEP_RESOLUTION':False,'SET_RESOLUTION':False,'X_RESOLUTION':None,'Y_RESOLUTION':None,'MULTITHREADING':False,'OPTIONS':None,'DATA_TYPE':0,'EXTRA':'','OUTPUT':'TEMPORARY_OUTPUT'})
+    
     #reclassifies road overlay raster
+    processing.run("native:reclassifybytable", {'INPUT_RASTER':'C:/Users/annah/AppData/Local/Temp/processing_NIkQOH/9e2bac6bf6144604a6eda16647c2082a/OUTPUT.tif','RASTER_BAND':1,'TABLE':['-inf','0','1','0','1','2','1','2','3','2','inf','4'],'NO_DATA':-9999,'RANGE_BOUNDARIES':0,'NODATA_FOR_MISSING':False,'DATA_TYPE':5,'CREATE_OPTIONS':None,'OUTPUT':'TEMPORARY_OUTPUT'})
 
     #vectorize road overlay raster
-    
+    processing.run("native:pixelstopolygons", {'INPUT_RASTER':'C:/Users/annah/AppData/Local/Temp/processing_NIkQOH/c605d728d6a14722af7be5a3a4c766af/OUTPUT.tif','RASTER_BAND':1,'FIELD_NAME':'VALUE','OUTPUT':'TEMPORARY_OUTPUT'})
 
     #calc intersection w road lines -> will create anothr set of lines
-
+    processing.run("native:intersection", {'INPUT':'memory://MultiPolygon?crs=EPSG:6543&field=VALUE:double(20,8)&uid={e2d0e00d-6d14-4c56-ba0d-5fc2a25e131b}','OVERLAY':'memory://MultiLineString?crs=EPSG:6543&field=id:long(10,0)&field=VALUE:double(20,8)&uid={242522cb-481c-4096-b269-fd45e2ae77d0}','INPUT_FIELDS':[],'OVERLAY_FIELDS':['VALUE'],'OVERLAY_FIELDS_PREFIX':'','OUTPUT':'TEMPORARY_OUTPUT','GRID_SIZE':None})
 
     #dissolve vectorized road overlay raster based on classification
+    #make permanent
+    dissolvedRoadVector = processing.run("native:dissolve", {'INPUT':'memory://MultiLineString?crs=EPSG:6543&field=id:long(10,0)&field=VALUE:double(20,8)&uid={242522cb-481c-4096-b269-fd45e2ae77d0}','FIELD':['VALUE'],'SEPARATE_DISJOINT':False,'OUTPUT':'TEMPORARY_OUTPUT'})
 
     #calculate length of each feature (length($geometry) is the accurate one) in the final road vector in miles
+    layer = QgsVectorLayer(dissolvedRoadVector['OUTPUT'], "dissolvedVectorLayer", "ogr")
+
+    # Ensure the layer is in editing mode
+    if not layer.isEditable():
+        layer.startEditing()
+
+    # Add a new field for the length
+    # The type QVariant.Double is suitable for decimal numbers
+    res = layer.dataProvider().addAttributes([QgsField("miles", QVariant.Double)])
+    layer.updateFields()
+
+    # Get the index of the newly created field
+    fieldIndex = layer.fieldNameIndex("miles")
+
+    # Calculate the length for each feature and update the attribute table
+    for feature in layer.getFeatures():
+        geom = feature.geometry()
+        # geom.length() calculates planar length in the layer's CRS units
+        length = geom.length() 
+        layer.changeAttributeValue(feature.id(), fieldIndex, length)
+
+    # Commit changes and stop editing
+    layer.commitChanges()
+        
     #export csv of attribute table 
 
 
