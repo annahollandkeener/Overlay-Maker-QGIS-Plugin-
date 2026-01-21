@@ -25,8 +25,8 @@ from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
 from qgis.core import QgsProject, QgsMapLayer
-from PyQt5.QtWidgets import QComboBox, QPushButton
-from PyQt5 import QtWidgets, QtCore
+from PyQt5.QtWidgets import QComboBox, QPushButton, QLineEdit, QGridLayout
+from PyQt5 import QtWidgets, QtCore, Qt
 
 # Initialize Qt resources from file resources.py
 from .resources import *
@@ -170,10 +170,10 @@ class OverlayMaker:
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
-        icon_path = ':/plugins/overlay_maker/icon.png'
+        icon_path = os.path.join(os.path.dirname(__file__), "OMicon3.png")
         self.add_action(
             icon_path,
-            text=self.tr(u'Overlay Maker'),
+            text=self.tr(u'Overlay Maker!'),
             callback=self.run,
             parent=self.iface.mainWindow())
 
@@ -203,13 +203,19 @@ class OverlayMaker:
         for combo in all_combos:
             combo.clear()
 
+    def activatedColor(self, button):
+        # Change the button's color to green when clicked
+        button.setStyleSheet("QPushButton {background-color: #aeb8b8;}")
+
+    def deactivatedColor(self, button):
+        # Change the button's color to green when clicked
+        button.setStyleSheet("")
+
     def pickFile(self, textBox, type):
         """Opens a file dialog for the user to select a file."""
         qfd = QtWidgets.QFileDialog()
 
         title = "Select a file"
-
-        
 
         if type == "folder":
             filePath = QtWidgets.QFileDialog.getExistingDirectory(qfd, "Select Folder", "C:\\")
@@ -228,12 +234,24 @@ class OverlayMaker:
             textBox.setEditable(True)
             textBox.setCurrentText(filePath)
 
-        
-
-
     def activateMode(self, button, mode = str):
-        self.dlg.currentDisplay.setCurrentIndex(0)
-        self.dlg.AOButton.setCheckable(True)
+        pushButtons =  []
+
+        for i in range(self.dlg.modeButtons.count()):
+            item = self.dlg.modeButtons.itemAt(i)
+            if item.widget() and isinstance(item.widget(), QPushButton):
+                pushButtons.append(item.widget())
+    
+        
+        for b in pushButtons:
+            if b == button:
+                self.activatedColor(b)
+            else:
+                self.deactivatedColor(b)
+
+        if self.dlg.currentDisplay.currentIndex() != 0:
+            self.dlg.currentDisplay.setCurrentIndex(0)
+
 
         layers = QgsProject.instance().mapLayers()
         dems = ['']
@@ -254,31 +272,54 @@ class OverlayMaker:
         elif mode == "RS":
             self.mode = "RS"
             self.dlg.modePage.setCurrentIndex(2)
-            self.dlg.RSdem.addItems(dems)
+            self.dlg.RSDEM.addItems(dems)
             self.dlg.RSWT.addItems(dems)
         elif mode == "GH":
             self.mode = "GH"
             self.dlg.modePage.setCurrentIndex(1)
-            self.dlg.GHdem.addItems(dems)
+            self.dlg.GHOverlay.addItems(dems)
             self.dlg.GHBlocks.addItems(vectors)
         elif mode == "RR":
             self.mode = "RR"
             self.dlg.modePage.setCurrentIndex(3)
             self.dlg.RROverlay.addItems(dems)
             self.dlg.RRRoads.addItems(vectors)
-
-    def onSubmit(self, mode):
-        print("CONSTRUCT")
-        if self.mode == "AO":
-            model.autoOverlay(self.dlg.AOBlocks.currentText(), self.dlg.AOdem.currentText(), self.dlg.AOOutput.text())
-        elif self.mode == "RS":
-            model.rasterSubtractor(self.dlg.RSdem.currentText(), self.dlg.RSWT.currentText(), self.dlg.RSOutput.text())
-        elif self.mode == "RR":
-            model.roadRaisingLength(self.dlg.RRRoads.currentText(), self.dlg.RROverlay.currentText(), self.dlg.RROutput.text())
-        elif self.mode == "GH":
-            model.rasterHist(self.dlg.GHOverlay.currentText(), self.dlg.GHBlocks.currentText(), None, self.dlg.GHOutput.text(), None, "Histogram")
-
     
+    def allFieldsFilled(self):
+        gridLayout = self.dlg.modePage.currentWidget().findChild(QGridLayout)
+
+        allFields = True
+
+        for i in range(gridLayout.count()):
+            item = gridLayout.itemAt(i)
+            if item.widget() and isinstance(item.widget(), QComboBox):
+                if item.widget().currentIndex() == -1:
+                    allFields = False
+
+            elif item.widget() and isinstance(item.widget(), QLineEdit):
+                if not item.widget().text():
+                    allFields = False
+        
+        return allFields
+
+    def onSubmit(self):
+
+        if self.allFieldsFilled() == True:
+
+            self.activatedColor(self.dlg.pushButton)
+            self.dlg.pushButton.setText("Running...")
+
+            if self.mode == "AO":
+                model.autoOverlay(self.dlg.AOBlocks.currentText(), self.dlg.AOdem.currentText(), self.dlg.AOOutput.text())
+            elif self.mode == "RS":
+                model.rasterSubtractor(self.dlg.RSdem.currentText(), self.dlg.RSWT.currentText(), self.dlg.RSOutput.text())
+            elif self.mode == "RR":
+                model.roadRaisingLength(self.dlg.RRRoads.currentText(), self.dlg.RROverlay.currentText(), self.dlg.RROutput.text())
+            elif self.mode == "GH":
+                model.rasterHist(self.dlg.GHOverlay.currentText(), self.dlg.GHBlocks.currentText(), None, self.dlg.GHOutput.text(), None, "Histogram")
+
+            self.deactivatedColor(self.dlg.pushButton)
+        
     def run(self):
         """Run method that performs all the real work"""
 
@@ -292,9 +333,19 @@ class OverlayMaker:
         #------MY CODE STARTS HERE-----------
 
         #reset progress bar
-        self.dlg.progressBar.setValue(0)
+        #self.dlg.progressBar.setValue(0)
         #set page to start page
         self.dlg.currentDisplay.setCurrentIndex(1)
+
+        pushButtons =  []
+
+        for i in range(self.dlg.modeButtons.count()):
+            item = self.dlg.modeButtons.itemAt(i)
+            if item.widget() and isinstance(item.widget(), QPushButton):
+                pushButtons.append(item.widget())
+    
+        for b in pushButtons:
+            self.deactivatedColor(b)
 
         #----------------------------------------Controller------------------------------------------
 
@@ -303,22 +354,22 @@ class OverlayMaker:
         self.dlg.AOSelectDEM.clicked.connect(lambda: self.pickFile(self.dlg.AOdem, "DEM"))
         self.dlg.AOSelectOP.clicked.connect(lambda: self.pickFile(self.dlg.AOOutput, "folder"))
 
-        self.dlg.RSButton.clicked.connect(lambda: self.activateMode("RS"))
+        self.dlg.RSButton.clicked.connect(lambda: self.activateMode(self.dlg.RSButton, "RS"))
         self.dlg.RSSelectWT.clicked.connect(lambda: self.pickFile(self.dlg.RSWT, "DEM"))
         self.dlg.RSSelectDEM.clicked.connect(lambda: self.pickFile(self.dlg.RSDEM, "DEM"))
         self.dlg.RSSelectOutput.clicked.connect(lambda: self.pickFile(self.dlg.RSOutput, "folder"))
 
-        self.dlg.RRButton.clicked.connect(lambda: self.activateMode("RR"))
+        self.dlg.RRButton.clicked.connect(lambda: self.activateMode(self.dlg.RRButton, "RR"))
         self.dlg.RRSelectOverlay.clicked.connect(lambda: self.pickFile(self.dlg.RROverlay, "DEM"))
         self.dlg.RRSelectRoads.clicked.connect(lambda: self.pickFile(self.dlg.RRRoads, "SHP"))
         self.dlg.RRSelectOutput.clicked.connect(lambda: self.pickFile(self.dlg.RROutput, "folder"))
 
-        self.dlg.GHButton.clicked.connect(lambda: self.activateMode("GH"))
-        self.dlg.GHSelectOverlay.clicked.connect(lambda: self.pickFile(self.dlg.GHdem, "DEM"))
+        self.dlg.GHButton.clicked.connect(lambda: self.activateMode(self.dlg.GHButton, "GH"))
+        self.dlg.GHSelectOverlay.clicked.connect(lambda: self.pickFile(self.dlg.GHOverlay, "DEM"))
         self.dlg.GHSelectBlocks.clicked.connect(lambda: self.pickFile(self.dlg.GHBlocks, "SHP"))
         self.dlg.GHSelectOutput.clicked.connect(lambda: self.pickFile(self.dlg.GHOutput, "folder"))
 
-        self.dlg.pushButton.clicked.connect(lambda: self.onSubmit(self.mode))
+        self.dlg.pushButton.clicked.connect(lambda: self.onSubmit())
 
         #------MY CODE ENDS HERE-----------
 
