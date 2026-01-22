@@ -10,8 +10,29 @@
     <height>354</height>
    </rect>
   </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>400</width>
+    <height>354</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>400</width>
+    <height>354</height>
+   </size>
+  </property>
   <property name="windowTitle">
    <string>Overlay Maker</string>
+  </property>
+  <property name="sizeGripEnabled">
+   <bool>false</bool>
   </property>
   <widget class="QWidget" name="mainFrame" native="true">
    <property name="geometry">
@@ -21,6 +42,12 @@
      <width>401</width>
      <height>361</height>
     </rect>
+   </property>
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
    </property>
    <widget class="QStackedWidget" name="currentDisplay">
     <property name="geometry">
@@ -45,7 +72,7 @@
        </rect>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="AOPage">
        <widget class="QWidget" name="gridLayoutWidget">
@@ -321,13 +348,23 @@
        <property name="geometry">
         <rect>
          <x>0</x>
-         <y>20</y>
+         <y>0</y>
          <width>361</width>
          <height>20</height>
         </rect>
        </property>
        <property name="text">
         <string>Run</string>
+       </property>
+      </widget>
+      <widget class="QTextEdit" name="progressUpdates">
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>30</y>
+         <width>361</width>
+         <height>21</height>
+        </rect>
        </property>
       </widget>
      </widget>
@@ -411,17 +448,17 @@
             <string>Overlay Maker</string>
            </property>
            <property name="alignment">
-            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+            <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
            </property>
           </widget>
          </item>
          <item row="0" column="0">
           <spacer name="horizontalSpacer">
            <property name="orientation">
-            <enum>Qt::Horizontal</enum>
+            <enum>Qt::Orientation::Horizontal</enum>
            </property>
            <property name="sizeType">
-            <enum>QSizePolicy::Fixed</enum>
+            <enum>QSizePolicy::Policy::Fixed</enum>
            </property>
            <property name="sizeHint" stdset="0">
             <size>
@@ -439,7 +476,7 @@
           <string>Produces DTWT analytics and maps for restoration planning</string>
          </property>
          <property name="alignment">
-          <set>Qt::AlignCenter</set>
+          <set>Qt::AlignmentFlag::AlignCenter</set>
          </property>
         </widget>
        </item>

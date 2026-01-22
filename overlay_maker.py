@@ -325,7 +325,7 @@ class OverlayMaker:
                 
                 model.rasterSubtractor(self.dlg.RSDEM.currentText(), self.dlg.RSWT.currentText(), self.dlg.RSOutput.text())
                 #self.deactivatedColor(self.dlg.pushButton)
-                self.dlg.pushButton.setText("Run")
+                #self.dlg.pushButton.setText("Run RSSSSS")
             elif self.mode == "RR":
                 
                 model.roadRaisingLength(self.dlg.RRRoads.currentText(), self.dlg.RROverlay.currentText(), self.dlg.RROutput.text())

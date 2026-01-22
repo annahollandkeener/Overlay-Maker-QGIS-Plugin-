@@ -1,6 +1,6 @@
 #IMPORTS
 import os
-from qgis.core import QgsVectorLayer, QgsCoordinateReferenceSystem, QgsField, QgsVectorFileWriter, QgsCoordinateTransformContext
+from qgis.core import QgsVectorLayer, QgsCoordinateReferenceSystem, QgsField, QgsVectorFileWriter, QgsCoordinateTransformContext, QgsMessageLog, Qgis
 from qgis.PyQt.QtCore import QVariant
 import processing
 from processing.core.Processing import Processing
@@ -58,43 +58,43 @@ def existingFolderHandler(outputFolder, subFolder = str):
 
 #RASTER SUBTRACTOR: Creates a raster overlay
 def rasterSubtractor(dem, waterTable, outputFolder, opt = 0):
+    QgsMessageLog.logMessage("\n~ Performing Raster Subtraction ~", "Overlay Maker", Qgis.Info)
+
     print("\n~ Performing Raster Subtraction ~")
     #subtracting flat raster of blocks from DEM using raster calculator
     if outputFolder == 'TEMPORARY_OUTPUT':
         outputPath = 'TEMPORARY_OUTPUT'
     else:
-        outputPath = outputFolder + "/overlay_option_" + str(opt) + ".tif"
-    
-    topDEM = QgsRasterLayer(dem, "topDEM")
+        outputFolderPath = existingFolderHandler(outputFolder, "Overlay")
+        
+        outputPath = outputFolderPath 
+        QgsMessageLog.logMessage(f"OutputPath: {outputPath}")
 
-    bottomDEM = QgsRasterLayer(waterTable, "bottomDEM")
-    
-    top = QgsRasterCalculatorEntry()
-    top.raster = topDEM
-    top.bandNumber = 1
-    top.ref = 'top_raster@1'
-    
-    bottom = QgsRasterCalculatorEntry()
-    bottom.raster = bottomDEM
-    bottom.bandNumber = 1
-    bottom.ref = 'bottom_raster@1'
+    alignedDEMOutput = outputPath + "/alignedDEM.tif"
 
-    transform_context = QgsProject.instance().transformContext()
-    
-    calc=QgsRasterCalculator(('"top_raster@1" - "bottom_raster@1"'), outputPath, 'GTiff', bottomDEM.extent(), bottomDEM.width(), bottomDEM.height(), [top, bottom], transform_context)
-    
-    calc.processCalculation()
-    
-    print("OVERLAY GENERATED: '" + outputPath)
+    alignedDEMCalc = processing.run("gdal:cliprasterbyextent", {'INPUT':dem,'PROJWIN':waterTable,'OVERCRS':False,'NODATA':None,'OPTIONS':None,'DATA_TYPE':0,'EXTRA':'','OUTPUT':alignedDEMOutput})
+
+    params = {
+        'INPUT_A': alignedDEMCalc['OUTPUT'], 'BAND_A': 1,
+        'INPUT_B': waterTable, 'BAND_B': 1,
+        'FORMULA': 'A - B',
+        'OUTPUT': outputPath + "/Overlay" + str(opt) + ".tif",
+        'CELLSIZE': 3,
+        'EXTENT': QgsRasterLayer(waterTable, "waterTable").extent()
+    }
+
+    result = processing.run("gdal:rastercalculator", params)
+
+    QgsMessageLog.logMessage(f"OVERLAY GENERATED: '{outputPath}'", "Overlay Maker", Qgis.Info)
 
     if outputFolder == 'TEMPORARY_OUTPUT':
-        return calc
+        return result['OUTPUT']
     else:
         return outputPath
 
 #RASTER HISTOGRAM GENERATOR: Creates a histogram for an overlay/raster for specified blocks
 def rasterHist(overlay, blocks, progressFolder, outputFolder, reclass = None, histPlotName = str):
-    print("\n~ Performing Raster Histogram Generation ~")
+    QgsMessageLog.logMessage("\n~ Performing Raster Histogram Generation ~", "Overlay Maker", Qgis.Info)
 
     if progressFolder == None:
         progressFolderPath = existingFolderHandler(outputFolder, "Histogram")
@@ -201,12 +201,12 @@ def rasterHist(overlay, blocks, progressFolder, outputFolder, reclass = None, hi
     plt.tight_layout(rect=[0, 0, 1, 0.98])
     plt.savefig(histogramWindowName)
 
-    print(f"HISTOGRAM GENERATED: {histogramWindowName}")
+    QgsMessageLog.logMessage(f"HISTOGRAM GENERATED: {histogramWindowName}", "Overlay Maker", Qgis.Info)
+
 
 #FLAT WATER TABLE GENERATOR: Creates a flat water table raster for specified blocks
 def flatWT(blocks, outputFolder):
-    
-    print("\n~ Performing flat water table generation ~")
+    QgsMessageLog.logMessage("\n~ Performing flat water table generation ~", "Overlay Maker", Qgis.Info)
 
     #saving sources of clipped domes in order to merge later
     #flatWTList = []
@@ -220,13 +220,13 @@ def flatWT(blocks, outputFolder):
     #create a flat raster based on the waterlevel of each blocks
     blockFlatRaster = processing.run("gdal:rasterize", {'INPUT':blocks,'FIELD':'wl','BURN':0,'USE_Z':False,'UNITS':1,'WIDTH':3,'HEIGHT':3,'EXTENT':None,'NODATA':0,'OPTIONS':None,'DATA_TYPE':5,'INIT':None,'INVERT':False,'EXTRA':'','OUTPUT':outputPath})
 
-    print(">>> FLAT WATER TABLE GENERATED!: " + blockFlatRaster['OUTPUT'] + "\n")
+    QgsMessageLog.logMessage(">>> FLAT WATER TABLE GENERATED!: " + blockFlatRaster['OUTPUT'] + "\n", "Overlay Maker", Qgis.Info)
 
     return blockFlatRaster['OUTPUT']
 
 #DOMED WATER TABLE GENERATOR: Creates a domed water table raster for specified blocks
 def domedWT( domedBlocks = [], outputFolder = str, columnIndicator = 2, opt = int):
-    print("\n~ Performing creation of domed water table: Option " + str(opt) + " ~")
+    QgsMessageLog.logMessage("\n~ Performing creation of domed water table: Option " + str(opt) + " ~", "Overlay Maker", Qgis.Info)
     
     #saving sources of clipped domes in order to merge later
     clippedDomes = []
@@ -269,19 +269,18 @@ def domedWT( domedBlocks = [], outputFolder = str, columnIndicator = 2, opt = in
     #merging all domes 
     if outputFolder == 'TEMPORARY_OUTPUT':
         merge = processing.run("gdal:merge", {'INPUT':clippedDomes,'PCT':False,'SEPARATE':False,'NODATA_INPUT':None,'NODATA_OUTPUT':0,'OPTIONS':None,'EXTRA':'','DATA_TYPE':5,'OUTPUT': 'TEMPORARY_OUTPUT'})
-        print("COMPLETED DOME: " + merge['OUTPUT'] + "\n")
+        QgsMessageLog.logMessage("COMPLETED DOME: " + merge['OUTPUT'] + "\n", "Overlay Maker", Qgis.Info)
         return merge
     else:
         merge = processing.run("gdal:merge", {'INPUT':clippedDomes,'PCT':False,'SEPARATE':False,'NODATA_INPUT':None,'NODATA_OUTPUT':0,'OPTIONS':None,'EXTRA':'','DATA_TYPE':5,'OUTPUT':outputFolder + '/all_domedWT_merged_' + str(opt) + "ft.tif"})
-        print("COMPLETED DOME: " + merge['OUTPUT'] + "\n")
+        QgsMessageLog.logMessage("COMPLETED DOME: " + merge['OUTPUT'] + "\n", "Overlay Maker", Qgis.Info)
+
         return merge
 
 #ROAD CALC: Creates a vector layer showing roads in the project area in need of potential raising
 
 def roadRaisingLength(roads, overlay, outputFolder):
     roadOutputPath = existingFolderHandler(outputFolder, "Roads")
-
-    print("UNDER CONSTRUCTIONS")
 
     #takes in project overlay
     overlayRL = QgsRasterLayer(overlay, "Overlay", "gdal")
@@ -348,13 +347,14 @@ def roadRaisingLength(roads, overlay, outputFolder):
     os.mkdir(csvOutputPath)
     gdal.VectorTranslate(csvOutputPath + "/CSV", layer.source(), options=options)
 
+    QgsMessageLog.logMessage(f"Road raising CSV: {csvOutputPath}" , "Overlay Maker", Qgis.Info)
+
 
 
 def roadFillCalc(dem, roads, WT, outputFolder):
 
     #takes in geometry of 
-
-    print("\n~ Performing calculation of affected roads in project area ~\n")
+    QgsMessageLog.logMessage("\n~ Performing calculation of affected roads in project area ~\n", "Overlay Maker", Qgis.Info)
 
     #getting basename of file being used
     baseName = os.path.basename(roads).split(".")[0] + "_overlay"
@@ -362,7 +362,6 @@ def roadFillCalc(dem, roads, WT, outputFolder):
     outputPath = outputFolder + "/" + baseName
 
     roadRasterOP = "'" + outputFolder + "/" + "roadRaster.tif'"
-    print(roadRasterOP)
 
     #buffering the roads vector
 
@@ -373,7 +372,8 @@ def roadFillCalc(dem, roads, WT, outputFolder):
     #subtracting proposed water table from rasterized version of the roads
     #roadsOverlay = rasterSubtractor.rasterSubtractor(roadsRaster['OUTPUT'], WT, outputPath)
 
-def autoOverlay(blocks, dem, outputFolder, overlayOptions = []):
+def autoOverlay(app, blocks, dem, outputFolder, overlayOptions = []):
+
     print("\n------------------------------------------------------------------------------------------------------------------------------------------")
     print("\n---------------------------------------------STARTING OVERLAYMAKER------------------------------------------------------------------------")
     print("\n------------------------------------------------------------------------------------------------------------------------------------------")
@@ -470,7 +470,7 @@ def autoOverlay(blocks, dem, outputFolder, overlayOptions = []):
 
     #adding other wl columns for overlay options, if not already defined
     if len(overlayOptions) == 0:
-        print("Overlay options not specified. Using default options: [0, 1, 2, -1, -2].")
+        QgsMessageLog.logMessage("Overlay options not specified. Using default options: [0, 1, 2, -1, -2].", "Overlay Maker", Qgis.Info)
         overlayOptions = [0]
 
     #variable for getting the index of the wl columns so we can have the proper TIN interp settings later
@@ -510,7 +510,7 @@ def autoOverlay(blocks, dem, outputFolder, overlayOptions = []):
     splitBlocksInput = demStats["OUTPUT"] 
     splitBlocks = processing.run("native:splitvectorlayer", {'INPUT':splitBlocksInput,'FIELD':'block','PREFIX_FIELD':True,'FILE_TYPE':1,'OUTPUT':ProcessingFolder + "/All Blocks Split"})
     
-    print("--> Blocks split: " + "'" + splitBlocks['OUTPUT'])
+    QgsMessageLog.logMessage("--> Blocks split: " + "'" + splitBlocks['OUTPUT'], "Overlay Maker", Qgis.Info)
 
     #making grid for each block to determine highest point and add this as a dome feature to the block
     wlColIndexCollected = False
@@ -518,7 +518,7 @@ def autoOverlay(blocks, dem, outputFolder, overlayOptions = []):
         #Getting base name of current block 
         currentBlock = os.path.basename(b).split(".")[0] 
 
-        print("\n>>>>>>>>>>>>>>> Analyzing " + currentBlock + " <<<<<<<<<<<<<<<")
+        QgsMessageLog.logMessage("\n>>>>>>>>>>>>>>> Analyzing " + currentBlock + " <<<<<<<<<<<<<<<", "Overlay Maker", Qgis.Info)
         
         #turning block path into a vector layer
         block = QgsVectorLayer(b, "block", "ogr")
@@ -533,8 +533,8 @@ def autoOverlay(blocks, dem, outputFolder, overlayOptions = []):
 
         #getting area in acres
         blockAreaAcres = round(blockArea / 43560, 1)
-    
-        print(f"\n-> Area of {currentBlock} = " + str(blockAreaAcres) + " acres")
+
+        QgsMessageLog.logMessage(f"\n-> Area of {currentBlock} = " + str(blockAreaAcres) + " acres", "Overlay Maker", Qgis.Info)
 
         #creating grid 
         grid = processing.run("native:creategrid", {'TYPE':0,'EXTENT':block.extent(),'HSPACING':610,'VSPACING':610,'HOVERLAY':0,'VOVERLAY':0,'CRS':QgsCoordinateReferenceSystem(block.crs()),'OUTPUT':'TEMPORARY_OUTPUT'})
@@ -552,6 +552,8 @@ def autoOverlay(blocks, dem, outputFolder, overlayOptions = []):
         TODStats = processing.run("native:zonalstatisticsfb", {'INPUT':clippedBuffer['OUTPUT'],'INPUT_RASTER':dem,'RASTER_BAND':1,'COLUMN_PREFIX':'_','STATISTICS':[0,1,2,4],'OUTPUT':TODStatsFolder + "/" + currentBlock + "_TODStats"})
         
         print("--> Block grid created: " + "'" + TODStats['OUTPUT'])
+
+        QgsMessageLog.logMessage("--> Block grid created: " + "'" + TODStats['OUTPUT'], "Overlay Maker", Qgis.Info)
 
         #Making this into a vector layer
         TODStatsVL = QgsVectorLayer(TODStats['OUTPUT'], "TODStatsVL_" + currentBlock, "ogr")
@@ -598,16 +600,17 @@ def autoOverlay(blocks, dem, outputFolder, overlayOptions = []):
 
             topOfDome = QgsVectorFileWriter.writeAsVectorFormatV3(layer=TODStatsVL, fileName=TODVectorsFolder + "/" + currentBlock + "_TOD_isolated", transformContext=transform_context, options=save_options)
 
-
-            print("---> Dome selected for " + currentBlock)
+            QgsMessageLog.logMessage("---> Dome selected for " + currentBlock, "Overlay Maker", Qgis.Info)
 
         else:
-            print("\n---> ERROR: No features selected from grid\n")
+            QgsMessageLog.logMessage("\n---> ERROR: No features selected from grid\n", "Overlay Maker", Qgis.Info)
+
         
         
         #merging TOD with block        
         domeBlockMerged = processing.run("native:mergevectorlayers", {'LAYERS':[b, topOfDome[2]],'CRS':None,'OUTPUT':blocksInnerOuter + "/" + currentBlock + "_inner+outer"})
-        print("----> Merged top of dome with block: " + "'" + domeBlockMerged['OUTPUT'])
+        QgsMessageLog.logMessage("----> Merged top of dome with block: " + "'" + domeBlockMerged['OUTPUT'], "Overlay Maker", Qgis.Info)
+
 
         #making a vector layer from the merged path
         domeBlockMergedVL = QgsVectorLayer(domeBlockMerged['OUTPUT'], "domeBlockMergedVL", "ogr")
@@ -672,20 +675,23 @@ def autoOverlay(blocks, dem, outputFolder, overlayOptions = []):
         domeBlockMergedVL.commitChanges()
         domeBlocks.append(domeBlockMerged['OUTPUT'])
         
-        print("-----> Initial block dome vector created and wls calculated: " + "'" + domeBlockMerged['OUTPUT'])
+        QgsMessageLog.logMessage("-----> Initial block dome vector created and wls calculated: " + "'" + domeBlockMerged['OUTPUT'], "Overlay Maker", Qgis.Info)
+
 
     
     #going through every option 
     
     overlayOptionIndex = 0
 
-    print("\n--------------------------CREATING DOMES AND OVERYLAYS--------------------------\n")
+    QgsMessageLog.logMessage("\n--------------------------CREATING DOMES AND OVERYLAYS--------------------------\n", "Overlay Maker", Qgis.Info)
+
     domedWaterTable = None
 
     for index in wlIndexes:
 
         #creating domes for each overlay option 
-        print(f"\n>>>>>>>>>>>>>>> CREATING DOMES, OVERLAY AND HISTOGRAM FOR {overlayOptions[overlayOptionIndex]} ft OVERLAY OPTION <<<<<<<<<<<<<<<")
+        QgsMessageLog.logMessage(f"\n>>>>>>>>>>>>>>> CREATING DOMES, OVERLAY AND HISTOGRAM FOR {overlayOptions[overlayOptionIndex]} ft OVERLAY OPTION <<<<<<<<<<<<<<<", "Overlay Maker", Qgis.Info)
+
         domedWaterTable = domedWT(domeBlocks, domedWTOutputPath, index, overlayOptions[overlayOptionIndex])
 
         #resampling dome to match dem so it can successfully subtract it
@@ -695,8 +701,7 @@ def autoOverlay(blocks, dem, outputFolder, overlayOptions = []):
         resampledDEMOutput = domedWTOutputPath + "/" + DEMbaseName + "_resampled.tif"
         processing.run("native:alignrasters", {'LAYERS':[{'inputFile': domedWaterTable['OUTPUT'],'outputFile': resampledDomeOutput,'resampleMethod': 0,'rescale': False},{'inputFile': dem,'outputFile': resampledDEMOutput,'resampleMethod': 0,'rescale': False}],'REFERENCE_LAYER':dem,'CRS':None,'CELL_SIZE_X':None,'CELL_SIZE_Y':None,'GRID_OFFSET_X':None,'GRID_OFFSET_Y':None,'EXTENT':dem})
 
-        print("-> Dome resampled to match DEM")
-
+        QgsMessageLog.logMessage("-> Dome resampled to match DEM", "Overlay Maker", Qgis.Info)
 
         #creating overlay  
         overlay = rasterSubtractor(dem, resampledDomeOutput, overlaysFolder, overlayOptions[overlayOptionIndex])
@@ -706,7 +711,7 @@ def autoOverlay(blocks, dem, outputFolder, overlayOptions = []):
         overlayRasterSource = QgsRasterLayer(overlay, "Clipped Overlay " + str(overlayOptions[overlayOptionIndex]) , "gdal").source()
         clippedOverlayPath = overlaysFolder + "/Clipped Overlay " + str(overlayOptions[overlayOptionIndex]) + ".tif"
 
-        params = {'INPUT':overlayRasterSource,
+        params = {'INPUT':clippedOverlayPath,
             'MASK':blockBoundaries.source(),
             'SOURCE_CRS':None,
             'TARGET_CRS':None,
@@ -726,16 +731,14 @@ def autoOverlay(blocks, dem, outputFolder, overlayOptions = []):
         
         clippedOverlay = processing.run("gdal:cliprasterbymasklayer", params)
 
-        print(f"\n -> CLIPPED OVERLAY GENERATED: '{clippedOverlay['OUTPUT']}'")
+        QgsMessageLog.logMessage(f"\n -> CLIPPED OVERLAY GENERATED: '{clippedOverlay['OUTPUT']}'", "Overlay Maker", Qgis.Info)
 
         #creating histogram
         rasterHist(overlay, blocks, histogramsProgFolder, histogramsFolder, None, f"Overlay Option: {overlayOptions[overlayOptionIndex]} ft")
     
         overlayOptionIndex += 1
     
-
-
     print("\n-------------------------- AUTO-OVERLAY COMPLETE :) --------------------------\n")
-
+    QgsMessageLog.logMessage("\n-------------------------- AUTO-OVERLAY COMPLETE :) --------------------------\n", "Overlay Maker", Qgis.Info)
 
 
