@@ -67,7 +67,7 @@ class OverlayMaker:
             QCoreApplication.installTranslator(self.translator)
 
         #current Mode (MY CODE)
-        self.mode = ''
+        self.mode = ""
 
         # Declare instance attributes
         self.actions = []
@@ -242,7 +242,6 @@ class OverlayMaker:
             if item.widget() and isinstance(item.widget(), QPushButton):
                 pushButtons.append(item.widget())
     
-        
         for b in pushButtons:
             if b == button:
                 self.activatedColor(b)
@@ -286,6 +285,7 @@ class OverlayMaker:
             self.dlg.RRRoads.addItems(vectors)
     
     def allFieldsFilled(self):
+        self.dlg.pushButton.setText("ITS TRUE!")
         gridLayout = self.dlg.modePage.currentWidget().findChild(QGridLayout)
 
         allFields = True
@@ -295,10 +295,16 @@ class OverlayMaker:
             if item.widget() and isinstance(item.widget(), QComboBox):
                 if item.widget().currentIndex() == -1:
                     allFields = False
+                    
 
             elif item.widget() and isinstance(item.widget(), QLineEdit):
                 if not item.widget().text():
                     allFields = False
+
+        if allFields == True:
+            self.dlg.pushButton.setText("ITS TRUE!")
+        else:
+            self.dlg.pushButton.setText("ITS FALSE!")
         
         return allFields
 
@@ -306,20 +312,36 @@ class OverlayMaker:
 
         if self.allFieldsFilled() == True:
 
-            self.activatedColor(self.dlg.pushButton)
             self.dlg.pushButton.setText("Running...")
+            self.activatedColor(self.dlg.pushButton)
+            
 
             if self.mode == "AO":
                 model.autoOverlay(self.dlg.AOBlocks.currentText(), self.dlg.AOdem.currentText(), self.dlg.AOOutput.text())
+                #self.deactivatedColor(self.dlg.pushButton)
+                self.dlg.pushButton.setText("Run")
             elif self.mode == "RS":
-                model.rasterSubtractor(self.dlg.RSdem.currentText(), self.dlg.RSWT.currentText(), self.dlg.RSOutput.text())
+                self.dlg.pushButton.setText(f"Executing {self.mode}")
+                
+                model.rasterSubtractor(self.dlg.RSDEM.currentText(), self.dlg.RSWT.currentText(), self.dlg.RSOutput.text())
+                #self.deactivatedColor(self.dlg.pushButton)
+                self.dlg.pushButton.setText("Run")
             elif self.mode == "RR":
+                
                 model.roadRaisingLength(self.dlg.RRRoads.currentText(), self.dlg.RROverlay.currentText(), self.dlg.RROutput.text())
+                #self.deactivatedColor(self.dlg.pushButton)
+                self.dlg.pushButton.setText("Run")
             elif self.mode == "GH":
+               
                 model.rasterHist(self.dlg.GHOverlay.currentText(), self.dlg.GHBlocks.currentText(), None, self.dlg.GHOutput.text(), None, "Histogram")
+                #self.deactivatedColor(self.dlg.pushButton)
+                self.dlg.pushButton.setText("Run")
 
-            self.deactivatedColor(self.dlg.pushButton)
-            self.dlg.pushButton.setText("Run")
+            
+           
+        
+            
+
         
     def run(self):
         """Run method that performs all the real work"""

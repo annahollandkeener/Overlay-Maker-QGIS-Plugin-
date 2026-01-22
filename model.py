@@ -97,10 +97,8 @@ def rasterHist(overlay, blocks, progressFolder, outputFolder, reclass = None, hi
     print("\n~ Performing Raster Histogram Generation ~")
 
     if progressFolder == None:
-        progressFolderPath = outputFolder + "/progress"
-        if not os.path.exists(progressFolderPath):
-            os.mkdir(progressFolderPath)
-            progressFolder = progressFolderPath
+        progressFolderPath = existingFolderHandler(outputFolder, "Histogram")
+        progressFolder = progressFolderPath
     
     #if reclass == None:
         #reclass = ['-1000','0','1','0','1','2','1','2','3','2','3','4','3','1000','5']
@@ -198,7 +196,7 @@ def rasterHist(overlay, blocks, progressFolder, outputFolder, reclass = None, hi
             histNameNum += 1
 
     plt.tight_layout()
-    histogramWindowName = outputFolder + "/" + baseName + "hist.png"
+    histogramWindowName = progressFolder + "/" + baseName + "hist.png"
     plt.suptitle(histPlotName)
     plt.tight_layout(rect=[0, 0, 1, 0.98])
     plt.savefig(histogramWindowName)
@@ -327,7 +325,7 @@ def roadRaisingLength(roads, overlay, outputFolder):
 
     # Add a new field for the length
     # The type QVariant.Double is suitable for decimal numbers
-    res = layer.dataProvider().addAttributes([QgsField("miles", QVariant.Double)])
+    res = layer.dataProvider().addAttributes([QgsField("miles", QVariant.Double, 'Double', 10, 2)])
     layer.updateFields()
 
     # Get the index of the newly created field
@@ -345,10 +343,10 @@ def roadRaisingLength(roads, overlay, outputFolder):
     layer.commitChanges()
         
 
-    options = gdal.VectorTranslateOptions(format='CSV', layerCreationOptions=['GEOMETRY=AS_WKT'])
+    options = gdal.VectorTranslateOptions(format='CSV')
     csvOutputPath = roadOutputPath + "/roadStats"
     os.mkdir(csvOutputPath)
-    gdal.VectorTranslate(layer.source(), csvOutputPath, options=options)
+    gdal.VectorTranslate(csvOutputPath + "/CSV", layer.source(), options=options)
 
 
 
