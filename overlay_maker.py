@@ -24,7 +24,7 @@
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
-from qgis.core import QgsProject, QgsMapLayer
+from qgis.core import QgsProject, QgsMapLayer, QgsMessageLog, Qgis, QgsVectorLayer, QgsRasterLayer, QgsApplication, QgsTask
 from PyQt5.QtWidgets import QComboBox, QPushButton, QLineEdit, QGridLayout
 from PyQt5 import QtWidgets, QtCore, Qt
 
@@ -36,6 +36,7 @@ import os.path
 
 #import all of the functions I've written
 from . import model
+from . import backgroundProcess
 
 class OverlayMaker:
     """QGIS Plugin Implementation."""
@@ -68,6 +69,8 @@ class OverlayMaker:
 
         #current Mode (MY CODE)
         self.mode = ""
+        self.model = None
+        self.my_task = None
 
         # Declare instance attributes
         self.actions = []
@@ -251,38 +254,46 @@ class OverlayMaker:
         if self.dlg.currentDisplay.currentIndex() != 0:
             self.dlg.currentDisplay.setCurrentIndex(0)
 
-
-        layers = QgsProject.instance().mapLayers()
-        dems = ['']
-        vectors = ['']
-
-         #collecting all dems currently loaded
-        for id, l in layers.items():
-            if l.type() == QgsMapLayer.RasterLayer:
-                dems.append(l.name())
-            elif l.type() == QgsMapLayer.VectorLayer:
-                vectors.append(l.name())
-
         if mode == "AO":
             self.mode = "AO"
             self.dlg.modePage.setCurrentIndex(self.dlg.modePage.indexOf(self.dlg.AOPage))
-            self.dlg.AOdem.addItems(dems)
-            self.dlg.AOBlocks.addItems(vectors)
+            
+            for layer in QgsProject.instance().mapLayers().values():
+                if isinstance(layer, QgsVectorLayer):
+                    self.dlg.AOBlocks.addItem(layer.name(), layer.source())
+                elif isinstance(layer, QgsRasterLayer):
+                    self.dlg.AOdem.addItem(layer.name(), layer.source())
+
         elif mode == "RS":
             self.mode = "RS"
             self.dlg.modePage.setCurrentIndex(self.dlg.modePage.indexOf(self.dlg.RSPage))
-            self.dlg.RSDEM.addItems(dems)
-            self.dlg.RSWT.addItems(dems)
+            
+            for layer in QgsProject.instance().mapLayers().values():
+                if isinstance(layer, QgsVectorLayer):
+                    self.dlg.RSWT.addItem(layer.name(), layer.source())
+                elif isinstance(layer, QgsRasterLayer):
+                    self.dlg.RSDEM.addItem(layer.name(), layer.source())
+            
+
         elif mode == "GH":
             self.mode = "GH"
             self.dlg.modePage.setCurrentIndex(self.dlg.modePage.indexOf(self.dlg.GHPage))
-            self.dlg.GHOverlay.addItems(dems)
-            self.dlg.GHBlocks.addItems(vectors)
+            
+            for layer in QgsProject.instance().mapLayers().values():
+                if isinstance(layer, QgsVectorLayer):
+                    self.dlg.GHBlocks.addItem(layer.name(), layer.source())
+                elif isinstance(layer, QgsRasterLayer):
+                    self.dlg.GHOverlay.addItem(layer.name(), layer.source())
+
         elif mode == "RR":
             self.mode = "RR"
             self.dlg.modePage.setCurrentIndex(self.dlg.modePage.indexOf(self.dlg.RRPage))
-            self.dlg.RROverlay.addItems(dems)
-            self.dlg.RRRoads.addItems(vectors)
+
+            for layer in QgsProject.instance().mapLayers().values():
+                if isinstance(layer, QgsVectorLayer):
+                    self.dlg.RRRoads.addItem(layer.name(), layer.source())
+                elif isinstance(layer, QgsRasterLayer):
+                    self.dlg.RROverlay.addItem(layer.name(), layer.source()) 
     
     def allFieldsFilled(self):
         self.dlg.pushButton.setText("ITS TRUE!")
@@ -300,13 +311,12 @@ class OverlayMaker:
             elif item.widget() and isinstance(item.widget(), QLineEdit):
                 if not item.widget().text():
                     allFields = False
-
-        if allFields == True:
-            self.dlg.pushButton.setText("ITS TRUE!")
-        else:
-            self.dlg.pushButton.setText("ITS FALSE!")
         
         return allFields
+    
+    def onFinished(self):
+        QgsMessageLog.logMessage("Task finished!", "Overlay Maker", Qgis.Info)
+        
 
     def onSubmit(self):
 
@@ -315,27 +325,34 @@ class OverlayMaker:
             self.dlg.pushButton.setText("Running...")
             self.activatedColor(self.dlg.pushButton)
             
-
             if self.mode == "AO":
-                model.autoOverlay(self.dlg.AOBlocks.currentText(), self.dlg.AOdem.currentText(), self.dlg.AOOutput.text())
-                #self.deactivatedColor(self.dlg.pushButton)
-                self.dlg.pushButton.setText("Run")
+                params = {'name': "AO",
+                        'blocks':self.dlg.AOBlocks.currentData(),
+                          'dem': self.dlg.AOdem.currentData(), 
+                          'output': self.dlg.AOOutput.text()
+                }
+
+                QgsMessageLog.logMessage("WE ARE IN AO MODE", "Overlay Maker", Qgis.Info)
+
+
+                self.my_task = QgsTask.fromFunction("AO", lambda task_obj: self.model.autoOverlay(task_obj, params['blocks'], params['dem'], params['output']))
+                QgsApplication.taskManager().addTask(self.my_task)
+
+                self.onFinished()
+
+                #self.model.autoOverlay(params['blocks'], params['dem'], params['output'])
+                  
             elif self.mode == "RS":
                 self.dlg.pushButton.setText(f"Executing {self.mode}")
-                
-                model.rasterSubtractor(self.dlg.RSDEM.currentText(), self.dlg.RSWT.currentText(), self.dlg.RSOutput.text())
-                #self.deactivatedColor(self.dlg.pushButton)
-                #self.dlg.pushButton.setText("Run RSSSSS")
+                self.model.rasterSubtractor(self.dlg.RSDEM.currentText(), self.dlg.RSWT.currentText(), self.dlg.RSOutput.text())
+            
             elif self.mode == "RR":
-                
-                model.roadRaisingLength(self.dlg.RRRoads.currentText(), self.dlg.RROverlay.currentText(), self.dlg.RROutput.text())
-                #self.deactivatedColor(self.dlg.pushButton)
+                self.model.roadRaisingLength(self.dlg.RRRoads.currentText(), self.dlg.RROverlay.currentText(), self.dlg.RROutput.text())
                 self.dlg.pushButton.setText("Run")
+            
             elif self.mode == "GH":
-               
-                model.rasterHist(self.dlg.GHOverlay.currentText(), self.dlg.GHBlocks.currentText(), None, self.dlg.GHOutput.text(), None, "Histogram")
-                #self.deactivatedColor(self.dlg.pushButton)
-                self.dlg.pushButton.setText("Run")
+                self.model.rasterHist(self.dlg.GHOverlay.currentText(), self.dlg.GHBlocks.currentText(), None, self.dlg.GHOutput.text(), None, "Histogram")
+        
 
             
            
@@ -354,6 +371,8 @@ class OverlayMaker:
                     
         
         #------MY CODE STARTS HERE-----------
+
+        self.model = model.Model(self)
 
         #reset progress bar
         #self.dlg.progressBar.setValue(0)

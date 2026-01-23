@@ -1,6 +1,6 @@
 #test functions
 import os
-from qgis.core import QgsVectorLayer, QgsVariantUtils
+from qgis.core import QgsVectorLayer, QgsVariantUtils, QgsMessageLog, Qgis
 
 def isPathValidTest(pathToTest):
     #check if valid path
@@ -15,6 +15,8 @@ def hasOptionalColumnTest(blocksToTest = str, colName = str):
     blocksVL = QgsVectorLayer(blocksToTest)
 
     found = False
+
+    QgsMessageLog.logMessage(f"Column name:{colName}", "Overlay Maker", Qgis.Info)
 
     #checking for column
     for field in blocksVL.fields():
@@ -37,11 +39,18 @@ def hasOptionalColumnTest(blocksToTest = str, colName = str):
 def hasRequiredColumnTest(blocksToTest, colName):
     #making input block a vector layer in order to access attribute table
     blocksVL = QgsVectorLayer(blocksToTest)
+
+    QgsMessageLog.logMessage(f"Blocks to test:{blocksVL}", "Overlay Maker", Qgis.Info)
+
+    QgsMessageLog.logMessage(f"Column name:{colName}", "Overlay Maker", Qgis.Info)
+
     
     found = False
 
     #checking for column
     for field in blocksVL.fields():
+        QgsMessageLog.logMessage(f"Field: {field}", "Overlay Maker", Qgis.Info)
+
         if field.name() == colName:
             found = True
             break
