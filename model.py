@@ -29,14 +29,23 @@ class Model():
         self.app = app
         
 
-    def existingFolderHandler(outputFolder, subFolder = str):
+    def existingFolderHandler(self, outputFolder, subFolder = str):
+        QgsMessageLog.logMessage(f"WERE IN THE EXISTING FOLDER FUNCTION", "Overlay Maker", Qgis.Info)
+
         newFolder = outputFolder + "/" + subFolder
 
+
         if not os.path.exists(newFolder):
+            QgsMessageLog.logMessage(f"OUTPUTFOLDER: {outputFolder}, subFOLDER: {subFolder}", "Overlay Maker", Qgis.Info)
+
             os.makedirs(newFolder)
+            QgsMessageLog.logMessage(f"WERE IN THE EXISTING FOLDER FUNCTION", "Overlay Maker", Qgis.Info)
+
             return newFolder
         else:
             # Folder already exists, find a unique name by appending a number
+            QgsMessageLog.logMessage(f"FOLDER EXISTS...OUTPUTFOLDER: {outputFolder}, subFOLDER: {subFolder}", "Overlay Maker", Qgis.Info)
+
             folder_name, _ = os.path.splitext(newFolder) # Split to handle potential extensions, though not typical for folders
             
             counter = 1
@@ -66,19 +75,28 @@ class Model():
     def rasterSubtractor(self, dem, waterTable, outputFolder, opt = 0):
         QgsMessageLog.logMessage("\n~ Performing Raster Subtraction ~", "Overlay Maker", Qgis.Info)
 
+
         print("\n~ Performing Raster Subtraction ~")
         #subtracting flat raster of blocks from DEM using raster calculator
         if outputFolder == 'TEMPORARY_OUTPUT':
             outputPath = 'TEMPORARY_OUTPUT'
         else:
+            QgsMessageLog.logMessage(f"WERE IN THE ELSE", "Overlay Maker", Qgis.Info)
+            QgsMessageLog.logMessage(f"\nMake folder inputs = {outputFolder}", "Overlay Maker", Qgis.Info)
+
+
             outputFolderPath = self.existingFolderHandler(outputFolder, "Overlay")
             
+            QgsMessageLog.logMessage(f"WERE AFTER THE FOLDER COMMAND", "Overlay Maker", Qgis.Info)
+
             outputPath = outputFolderPath 
-            QgsMessageLog.logMessage(f"OutputPath: {outputPath}")
+            
 
-        alignedDEMOutput = outputPath + "/alignedDEM.tif"
+        alignedDEMOutput = outputPath + "/alignedDEM"
 
-        alignedDEMCalc = processing.run("gdal:cliprasterbyextent", {'INPUT':dem,'PROJWIN':waterTable,'OVERCRS':False,'NODATA':None,'OPTIONS':None,'DATA_TYPE':0,'EXTRA':'','OUTPUT':alignedDEMOutput})
+        QgsMessageLog.logMessage(f"alignedDEMOutput: {alignedDEMOutput}", "Overlay Maker", Qgis.Info)
+
+        alignedDEMCalc = processing.run("gdal:cliprasterbyextent", {'INPUT':dem,'PROJWIN':waterTable,'OVERCRS':False,'NODATA':None,'OPTIONS':None,'DATA_TYPE':0,'EXTRA':'','OUTPUT':alignedDEMOutput + ".tif"})
 
         params = {
             'INPUT_A': alignedDEMCalc['OUTPUT'], 'BAND_A': 1,
@@ -96,7 +114,8 @@ class Model():
         if outputFolder == 'TEMPORARY_OUTPUT':
             return result['OUTPUT']
         else:
-            return outputPath
+            newOutputPath =  outputPath + "/Overlay" + str(opt) + ".tif"
+            return newOutputPath
 
     #RASTER HISTOGRAM GENERATOR: Creates a histogram for an overlay/raster for specified blocks
     def rasterHist(self, overlay, blocks, progressFolder, outputFolder, reclass = None, histPlotName = str):
@@ -231,7 +250,7 @@ class Model():
         return blockFlatRaster['OUTPUT']
 
     #DOMED WATER TABLE GENERATOR: Creates a domed water table raster for specified blocks
-    def domedWT( domedBlocks = [], outputFolder = str, columnIndicator = 2, opt = int):
+    def domedWT(self, domedBlocks = [], outputFolder = str, columnIndicator = 2, opt = int):
         QgsMessageLog.logMessage("\n~ Performing creation of domed water table: Option " + str(opt) + " ~", "Overlay Maker", Qgis.Info)
         
         #saving sources of clipped domes in order to merge later
@@ -255,22 +274,31 @@ class Model():
             #setting up path and instructions for TIN interpolation tool
             interpolationData = dome + '|layername=' + baseName +'::~::0::~::' + str(columnIndicator) + '::~::2'
 
+            QgsMessageLog.logMessage("\n~WE MAKE IT HERE IN DOMED WT " + str(opt) + " ~", "Overlay Maker", Qgis.Info)
+
             #calculating rough dome and adding to map viewer
             if outputFolder == 'TEMPORARY_OUTPUT':
                 roughOutput = 'TEMPORARY_OUTPUT'
                 clippedOutput = 'TEMPORARY_OUTPUT'
             else:
-                roughOutput = outputFolder + "/" + baseName + "_domeRough_" + str(opt) + ".tif"
-                clippedOutput = outputFolder + "/" + baseName + "_domeClipped_" + str(opt) + ".tif"
+                roughOutput = outputFolder + "/" + baseName + "_domeRough_" + str(opt) 
+                clippedOutput = outputFolder + "/" + baseName + "_domeClipped_" + str(opt) 
             
-            domeRough = processing.run("qgis:tininterpolation", {'INTERPOLATION_DATA':interpolationData,'METHOD':0,'EXTENT':extent,'PIXEL_SIZE':15,'OUTPUT': roughOutput})
+            domeRough = processing.run("qgis:tininterpolation", {'INTERPOLATION_DATA':interpolationData,'METHOD':0,'EXTENT':extent,'PIXEL_SIZE':15,'OUTPUT': roughOutput + ".tif"})
             #print("Rough dome created: " + domeRough['OUTPUT'])
 
+            QgsMessageLog.logMessage(f"\nClip by extent inputs: domeRough = {domeRough['OUTPUT']}, output: {clippedOutput}", "Overlay Maker", Qgis.Info)
+
             #clipping dome to block
-            domeClipped = processing.run("gdal:cliprasterbyextent", {'INPUT':domeRough['OUTPUT'],'PROJWIN': extent,'OVERCRS':False,'NODATA':None,'OPTIONS':None,'DATA_TYPE':0,'EXTRA':'','OUTPUT':clippedOutput})
+            domeClipped = processing.run("gdal:cliprasterbyextent", {'INPUT':domeRough['OUTPUT'],'PROJWIN': extent,'OVERCRS':False,'NODATA':None,'OPTIONS':None,'DATA_TYPE':0,'EXTRA':'','OUTPUT':clippedOutput + '.tif'})
             
+
+            QgsMessageLog.logMessage(f"\n~Clipped Dome Created: {clippedOutput} ", "Overlay Maker", Qgis.Info)
+            self.app.dlg.progressUpdates.append(f"\n~Clipped Dome Created: {clippedOutput} ")
+
             #adding final clipped dome to a list
             clippedDomes.append(domeClipped['OUTPUT'])
+
 
         #merging all domes 
         if outputFolder == 'TEMPORARY_OUTPUT':
@@ -278,6 +306,8 @@ class Model():
             QgsMessageLog.logMessage("COMPLETED DOME: " + merge['OUTPUT'] + "\n", "Overlay Maker", Qgis.Info)
             return merge
         else:
+            QgsMessageLog.logMessage(f"\nMerge inputs: domeRough = {clippedDomes}", "Overlay Maker", Qgis.Info)
+
             merge = processing.run("gdal:merge", {'INPUT':clippedDomes,'PCT':False,'SEPARATE':False,'NODATA_INPUT':None,'NODATA_OUTPUT':0,'OPTIONS':None,'EXTRA':'','DATA_TYPE':5,'OUTPUT':outputFolder + '/all_domedWT_merged_' + str(opt) + "ft.tif"})
             QgsMessageLog.logMessage("COMPLETED DOME: " + merge['OUTPUT'] + "\n", "Overlay Maker", Qgis.Info)
 
@@ -387,7 +417,7 @@ class Model():
         #----------testing inputs begin----------
 
         QgsMessageLog.logMessage(f"Blocks: {blocks}", "Overlay Maker", Qgis.Info)
-        self.app.dlg.progressUpdates.append(f"Blocks: {blocks}")
+        self.app.dlg.progressUpdates.append(f"\nBlocks: {blocks}")
 
 
         testFunctions.hasRequiredColumnTest(blocks, 'block')
@@ -521,6 +551,9 @@ class Model():
         splitBlocks = processing.run("native:splitvectorlayer", {'INPUT':splitBlocksInput,'FIELD':'block','PREFIX_FIELD':True,'FILE_TYPE':1,'OUTPUT':ProcessingFolder + "/All Blocks Split"})
         
         QgsMessageLog.logMessage("--> Blocks split: " + "'" + splitBlocks['OUTPUT'], "Overlay Maker", Qgis.Info)
+        self.app.dlg.progressUpdates.append("\n --> Blocks split: '" + splitBlocks['OUTPUT'] + "'")
+
+
 
         #making grid for each block to determine highest point and add this as a dome feature to the block
         wlColIndexCollected = False
@@ -701,15 +734,21 @@ class Model():
 
             #creating domes for each overlay option 
             QgsMessageLog.logMessage(f"\n>>>>>>>>>>>>>>> CREATING DOMES, OVERLAY AND HISTOGRAM FOR {overlayOptions[overlayOptionIndex]} ft OVERLAY OPTION <<<<<<<<<<<<<<<", "Overlay Maker", Qgis.Info)
+            QgsMessageLog.logMessage("We make it here before crashing!", "Overlay Maker", Qgis.Info)
+
+            QgsMessageLog.logMessage(f"\nCurrent Inputs: domeBlocks = {domeBlocks}, domeWTOutputPath = {domedWTOutputPath}", "Overlay Maker", Qgis.Info)
 
             domedWaterTable = self.domedWT(domeBlocks, domedWTOutputPath, index, overlayOptions[overlayOptionIndex])
+
+            QgsMessageLog.logMessage("AND NOW WERE HERE", "Overlay Maker", Qgis.Info)
+            
 
             #resampling dome to match dem so it can successfully subtract it
             resampledDomeOutput = domedWTOutputPath + "/" + str(overlayOptions[overlayOptionIndex]) + "_resampled"
             DEMbaseName = os.path.basename(dem).split(".")[0]
 
-            resampledDEMOutput = domedWTOutputPath + "/" + DEMbaseName + "_resampled.tif"
-            processing.run("native:alignrasters", {'LAYERS':[{'inputFile': domedWaterTable['OUTPUT'],'outputFile': resampledDomeOutput,'resampleMethod': 0,'rescale': False},{'inputFile': dem,'outputFile': resampledDEMOutput,'resampleMethod': 0,'rescale': False}],'REFERENCE_LAYER':dem,'CRS':None,'CELL_SIZE_X':None,'CELL_SIZE_Y':None,'GRID_OFFSET_X':None,'GRID_OFFSET_Y':None,'EXTENT':dem})
+            resampledDEMOutput = domedWTOutputPath + "/" + DEMbaseName + "_resampled"
+            resamp = processing.run("native:alignrasters", {'LAYERS':[{'inputFile': domedWaterTable['OUTPUT'],'outputFile': resampledDomeOutput,'resampleMethod': 0,'rescale': False},{'inputFile': dem,'outputFile': resampledDEMOutput + ".tif",'resampleMethod': 0,'rescale': False}],'REFERENCE_LAYER':dem,'CRS':None,'CELL_SIZE_X':None,'CELL_SIZE_Y':None,'GRID_OFFSET_X':None,'GRID_OFFSET_Y':None,'EXTENT':dem})
 
             QgsMessageLog.logMessage("-> Dome resampled to match DEM", "Overlay Maker", Qgis.Info)
 
@@ -721,7 +760,7 @@ class Model():
             overlayRasterSource = QgsRasterLayer(overlay, "Clipped Overlay " + str(overlayOptions[overlayOptionIndex]) , "gdal").source()
             clippedOverlayPath = overlaysFolder + "/Clipped Overlay " + str(overlayOptions[overlayOptionIndex]) + ".tif"
 
-            params = {'INPUT':clippedOverlayPath,
+            params = {'INPUT':overlay,
                 'MASK':blockBoundaries.source(),
                 'SOURCE_CRS':None,
                 'TARGET_CRS':None,
